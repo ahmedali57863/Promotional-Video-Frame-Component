@@ -1,10 +1,13 @@
-import { X, Settings2, Image as ImageIcon, Type, Upload } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { X, Settings2, Image as ImageIcon, Type, Upload, Video, Share2, Download } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
 
 interface BrandingState {
   logo: string;
   title: string;
   subtitle: string;
+  mediaSrc: string;
+  mediaType: 'video' | 'image';
+  fontFamily: string;
 }
 
 interface SidebarProps {
@@ -17,10 +20,11 @@ interface SidebarProps {
   setActivePreset: (preset: string) => void;
   branding: BrandingState;
   setBranding: (branding: BrandingState) => void;
+  onShare: () => void;
 }
 
 export default function Sidebar({ 
-  isOpen, onClose, onBgChange, activeFrame, setActiveFrame, activePreset, setActivePreset, branding, setBranding 
+  isOpen, onClose, onBgChange, activeFrame, setActiveFrame, activePreset, setActivePreset, branding, setBranding, onShare 
 }: SidebarProps) {
   const [color1, setColor1] = useState("#00856F");
   const [color2, setColor2] = useState("");
@@ -53,6 +57,14 @@ export default function Sidebar({
     { id: 'grid', name: 'Perspective Grid (Opaque)' }
   ];
 
+  const fonts = [
+    { id: 'Inter', name: 'Inter (Clean & Modern)' },
+    { id: 'Playfair Display', name: 'Playfair Display (Elegant Serif)' },
+    { id: 'Orbitron', name: 'Orbitron (Sci-Fi)' },
+    { id: 'Caveat', name: 'Caveat (Handwriting)' },
+    { id: 'Courier New', name: 'Courier New (Monospace)' },
+  ];
+
   const isStandaloneActive = standalonePresets.some(p => p.id === activePreset);
 
   // Live update background colors (Only if standalone is NOT active)
@@ -78,6 +90,58 @@ export default function Sidebar({
         setBranding({ ...branding, logo: reader.result as string });
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  const handleMediaUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const isVideo = file.type.startsWith('video/');
+      const url = URL.createObjectURL(file);
+      setBranding({ ...branding, mediaSrc: url, mediaType: isVideo ? 'video' : 'image' });
+    }
+  };
+
+  const handleRecordShowcase = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: { displaySurface: "browser" },
+        audio: false
+      });
+      
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+      const chunks: Blob[] = [];
+      
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunks.push(e.data);
+      };
+      
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(chunks, { type: 'video/webm' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'showcase-recording.webm';
+        a.click();
+        URL.revokeObjectURL(url);
+      };
+      
+      mediaRecorder.start();
+      
+      // Auto stop after 20 seconds
+      setTimeout(() => {
+        if (mediaRecorder.state === 'recording') {
+          mediaRecorder.stop();
+          stream.getTracks().forEach(track => track.stop());
+        }
+      }, 20000);
+      
+      // Close sidebar so it's not in the video
+      onClose();
+      
+    } catch (err) {
+      console.error("Recording failed", err);
+      alert("Failed to start recording. Make sure you grant permission to capture the screen.");
     }
   };
 
@@ -139,6 +203,20 @@ export default function Sidebar({
                   </label>
                 </div>
 
+                {/* Main Media Upload */}
+                <div>
+                  <label className="text-xs font-semibold text-white/60 mb-2 flex items-center gap-2 uppercase tracking-widest">
+                    <Video size={14} /> Showcase Media
+                  </label>
+                  <label className="flex items-center justify-center w-full h-12 border border-white/20 rounded-lg hover:border-[#7bf1d6] hover:bg-white/5 transition-all cursor-pointer relative overflow-hidden bg-black/40">
+                    <div className="flex items-center gap-2 text-white/70">
+                      <Upload size={14} />
+                      <span className="text-xs font-medium">Upload Video / Image</span>
+                    </div>
+                    <input type="file" accept="video/*,image/*" onChange={handleMediaUpload} className="hidden" />
+                  </label>
+                </div>
+
                 {/* Title */}
                 <div>
                   <label className="text-xs font-semibold text-white/60 mb-2 flex items-center gap-2 uppercase tracking-widest">
@@ -165,6 +243,22 @@ export default function Sidebar({
                     className="w-full bg-black/50 border border-white/10 rounded-lg p-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-[#7bf1d6] transition-colors"
                     placeholder="Enter subtitle..."
                   />
+                </div>
+
+                {/* Font Selector */}
+                <div>
+                  <label className="text-xs font-semibold text-white/60 mb-2 flex items-center gap-2 uppercase tracking-widest">
+                    <Type size={14} /> Title Font
+                  </label>
+                  <select 
+                    value={branding.fontFamily}
+                    onChange={(e) => setBranding({ ...branding, fontFamily: e.target.value })}
+                    className="w-full bg-black/50 border border-white/10 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-[#7bf1d6] transition-colors appearance-none cursor-pointer"
+                  >
+                    {fonts.map(font => (
+                      <option key={font.id} value={font.id} className="bg-black text-white">{font.name}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
             )}
@@ -303,6 +397,23 @@ export default function Sidebar({
               
             </div>
           </div>
+
+          {/* Export & Record */}
+          <div className="mt-10 mb-6 pt-6 border-t border-white/10 flex flex-col gap-3">
+            <button 
+              onClick={onShare}
+              className="flex items-center justify-center gap-2 w-full p-3 rounded-lg bg-[#7bf1d6]/10 border border-[#7bf1d6]/30 text-[#7bf1d6] hover:bg-[#7bf1d6]/20 transition-all cursor-pointer font-semibold"
+            >
+              <Share2 size={16} /> Copy Share Link
+            </button>
+            <button 
+              onClick={handleRecordShowcase}
+              className="flex items-center justify-center gap-2 w-full p-3 rounded-lg bg-[#f17bbd]/10 border border-[#f17bbd]/30 text-[#f17bbd] hover:bg-[#f17bbd]/20 transition-all cursor-pointer font-semibold"
+            >
+              <Download size={16} /> Record Showcase (20s)
+            </button>
+          </div>
+
         </div>
       </div>
     </>

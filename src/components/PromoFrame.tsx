@@ -1,4 +1,3 @@
-import { motion } from "framer-motion";
 import { useState, useRef, useEffect } from "react";
 
 interface PromoFrameProps {
@@ -7,6 +6,9 @@ interface PromoFrameProps {
     logo: string;
     title: string;
     subtitle: string;
+    mediaSrc?: string;
+    mediaType?: 'video' | 'image';
+    fontFamily?: string;
   };
 }
 
@@ -14,13 +16,32 @@ export default function PromoFrame({ variant = 'glassmorphic', branding }: Promo
   const [isMuted, setIsMuted] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  // Safely update the muted property directly on the DOM node 
-  // We include `variant` in deps so that when the DOM remounts on frame change, it re-applies mute state!
   useEffect(() => {
     if (videoRef.current) {
       videoRef.current.muted = isMuted;
     }
-  }, [isMuted, variant]);
+  }, [isMuted, variant, branding?.mediaSrc]);
+
+  // Dynamically load font if needed
+  useEffect(() => {
+    if (branding?.fontFamily) {
+      const linkId = `font-${branding.fontFamily.replace(/\s+/g, '-')}`;
+      if (!document.getElementById(linkId)) {
+        const link = document.createElement('link');
+        link.id = linkId;
+        link.href = `https://fonts.googleapis.com/css2?family=${branding.fontFamily.replace(/\s+/g, '+')}:wght@400;600;700&display=swap`;
+        link.rel = 'stylesheet';
+        document.head.appendChild(link);
+      }
+    }
+  }, [branding?.fontFamily]);
+
+  const MediaRenderer = () => {
+    if (branding?.mediaType === 'image') {
+      return <img src={branding.mediaSrc || "/ogdcl_scroll.mp4"} className="w-full h-full object-cover" alt="Showcase Media" />;
+    }
+    return <video ref={videoRef} src={branding?.mediaSrc || "/ogdcl_scroll.mp4"} autoPlay loop muted playsInline className="w-full h-full object-cover" />;
+  };
 
   let content = null;
 
@@ -34,7 +55,7 @@ export default function PromoFrame({ variant = 'glassmorphic', branding }: Promo
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-12 md:w-24 h-3 md:h-5 bg-black rounded-b-xl z-20 shadow-inner" />
             
             <div className="relative w-full overflow-hidden bg-black aspect-video rounded-xl shadow-[inset_0_0_10px_rgba(0,0,0,1)] border border-[#222]">
-              <video ref={videoRef} src="/ogdcl_scroll.mp4" autoPlay loop muted playsInline className="w-full h-full object-cover" />
+              <MediaRenderer />
               <div className="absolute inset-0 bg-gradient-to-tr from-white/5 to-transparent pointer-events-none mix-blend-screen" />
             </div>
             
@@ -58,7 +79,9 @@ export default function PromoFrame({ variant = 'glassmorphic', branding }: Promo
       content = (
         <div className="relative w-[85%] md:w-[65%] max-w-2xl mx-auto bg-[#fafafa] p-4 md:p-6 pb-20 md:pb-28 rounded-sm shadow-[10px_20px_40px_rgba(0,0,0,0.6),_inset_0_0_20px_rgba(255,255,255,1)] transform -rotate-2 hover:rotate-0 transition-transform duration-500">
           <div className="relative w-full overflow-hidden bg-black aspect-square md:aspect-[4/3] shadow-[inset_0_0_15px_rgba(0,0,0,0.8)] border border-gray-300">
-            <video ref={videoRef} src="/ogdcl_scroll.mp4" autoPlay loop muted playsInline className="w-full h-full object-cover grayscale-[15%] contrast-125 sepia-[15%]" />
+            <div className="w-full h-full grayscale-[15%] contrast-125 sepia-[15%]">
+              <MediaRenderer />
+            </div>
             <div className="absolute inset-0 bg-gradient-to-bl from-white/10 to-transparent pointer-events-none mix-blend-overlay" />
           </div>
           <div className="absolute bottom-6 md:bottom-10 left-0 w-full text-center text-gray-800 text-xl md:text-3xl font-bold opacity-80" style={{ fontFamily: '"Caveat", "Comic Sans MS", cursive' }}>
@@ -68,14 +91,12 @@ export default function PromoFrame({ variant = 'glassmorphic', branding }: Promo
       );
       break;
 
-
-
     case 'billboard':
       content = (
         <div className="relative w-full max-w-7xl mx-auto mt-8 md:mt-16">
           {/* Main Billboard Screen */}
           <div className="relative w-full overflow-hidden bg-black aspect-[21/9] border-[10px] md:border-[16px] border-[#1a1a1a] shadow-[0_50px_100px_rgba(0,0,0,0.9)] z-10 rounded-sm">
-            <video ref={videoRef} src="/ogdcl_scroll.mp4" autoPlay loop muted playsInline className="w-full h-full object-cover" />
+            <MediaRenderer />
             <div className="absolute inset-0 pointer-events-none border border-white/10 shadow-[inset_0_0_50px_rgba(0,0,0,0.8)]" />
           </div>
           
@@ -97,7 +118,7 @@ export default function PromoFrame({ variant = 'glassmorphic', branding }: Promo
       content = (
         <div className="relative w-full max-w-5xl mx-auto bg-cyan-950/40 rounded-xl p-2 md:p-3 shadow-[0_0_50px_rgba(6,182,212,0.5)] border border-cyan-400/60 backdrop-blur-md transition-colors duration-700">
           <div className="relative w-full overflow-hidden bg-black aspect-video rounded-lg border border-cyan-400/30 transition-colors duration-700">
-            <video ref={videoRef} src="/ogdcl_scroll.mp4" autoPlay loop muted playsInline className="w-full h-full object-cover" />
+            <MediaRenderer />
             <div className="absolute inset-0 pointer-events-none bg-cyan-400/10 mix-blend-screen" />
           </div>
         </div>
@@ -109,7 +130,7 @@ export default function PromoFrame({ variant = 'glassmorphic', branding }: Promo
       content = (
         <div className="relative w-full max-w-6xl mx-auto bg-[#1a1a1a] rounded-[2rem] p-4 md:p-6 shadow-[0_40px_100px_rgba(0,0,0,0.6),_0_0_40px_rgba(0,133,111,0.5)] border-t border-white/20 transition-colors duration-700">
           <div className="relative w-full overflow-hidden bg-black aspect-video rounded-2xl shadow-inner border border-white/10 transition-colors duration-700">
-            <video ref={videoRef} src="/ogdcl_scroll.mp4" autoPlay loop muted playsInline className="w-full h-full object-cover" />
+            <MediaRenderer />
             <div className="absolute inset-0 bg-gradient-to-tr from-white/10 via-transparent to-transparent pointer-events-none" />
           </div>
         </div>
@@ -121,7 +142,10 @@ export default function PromoFrame({ variant = 'glassmorphic', branding }: Promo
     <div className="flex flex-col items-center justify-center min-h-screen w-full relative z-10 pt-10 pb-20">
       
       {/* Title Section */}
-      <div className="flex flex-col items-center text-center mb-10 px-4 z-20">
+      <div 
+        className="flex flex-col items-center text-center mb-10 px-4 z-20 transition-all duration-300"
+        style={{ fontFamily: branding?.fontFamily ? `"${branding.fontFamily}", sans-serif` : 'Inter, sans-serif' }}
+      >
         <img 
           src={branding?.logo || "/OGDCL-Logo.png"} 
           alt="Brand Logo" 
@@ -135,27 +159,17 @@ export default function PromoFrame({ variant = 'glassmorphic', branding }: Promo
         </p>
       </div>
 
-      {/* 3D Animated Card Container */}
+      {/* 3D Static Card Container for Maximum Performance */}
       <div 
         className="relative flex justify-center w-full"
         style={{ perspective: "1500px" }}
       >
-        <motion.div
-          key={variant} // re-animate if variant changes
-          animate={{
-            rotateX: [10, 2, 10, 10, 10, 10],
-            translateY: [0, -15, 0, 0, 0, 0],
-            rotateY: [0, 0, 0, -3, 3, 0]
-          }}
-          transition={{
-            duration: 12,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-          className="w-[90%] md:w-[80%]"
+        <div 
+          className="w-[90%] md:w-[80%] flex justify-center transform rotate-x-[5deg] -translate-y-[5px]"
+          style={{ transformStyle: "preserve-3d" }}
         >
           {content}
-        </motion.div>
+        </div>
       </div>
 
       {/* Mute/Unmute Control Button Fixed to Background */}

@@ -34,9 +34,31 @@ function App() {
     return saved ? JSON.parse(saved) : {
       logo: '/ogdcl-logo.png',
       title: 'Pioneering Energy Frontiers',
-      subtitle: 'Explore. Learn. Grow.'
+      subtitle: 'Explore. Learn. Grow.',
+      mediaSrc: '/ogdcl_scroll.mp4',
+      mediaType: 'video',
+      fontFamily: 'Inter'
     };
   });
+
+  // URL Config Parser for "Save & Share"
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const configHash = params.get('config');
+    if (configHash) {
+      try {
+        const decoded = JSON.parse(atob(configHash));
+        if (decoded.bgStyle) setBgStyle(decoded.bgStyle);
+        if (decoded.activeFrame) setActiveFrame(decoded.activeFrame);
+        if (decoded.activePreset) setActivePreset(decoded.activePreset);
+        if (decoded.branding) setBranding(decoded.branding);
+        // Clean URL after applying
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } catch (e) {
+        console.error("Failed to parse config URL:", e);
+      }
+    }
+  }, []);
 
   // Persist background changes
   useEffect(() => {
@@ -51,6 +73,14 @@ function App() {
   useEffect(() => {
     localStorage.setItem('ogdcl_branding', JSON.stringify(branding));
   }, [branding]);
+
+  const handleShare = () => {
+    const config = { bgStyle, activeFrame, activePreset, branding };
+    const hash = btoa(JSON.stringify(config));
+    const url = `${window.location.origin}${window.location.pathname}?config=${hash}`;
+    navigator.clipboard.writeText(url);
+    alert("Share link copied to clipboard! Anyone who visits this link will see your exact configuration.");
+  };
 
   return (
     <div className="w-full h-screen relative overflow-hidden transition-all duration-500" style={bgStyle}>
@@ -78,6 +108,7 @@ function App() {
 
       {/* Hamburger Menu Button */}
       <button 
+        id="sidebar-toggle-btn"
         onClick={() => setIsSidebarOpen(true)}
         className="absolute top-6 left-6 z-[60] p-3 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-md border border-white/20 text-white transition-all duration-300 shadow-xl cursor-pointer"
         aria-label="Open Sidebar"
@@ -96,6 +127,7 @@ function App() {
         setActivePreset={setActivePreset}
         branding={branding}
         setBranding={setBranding}
+        onShare={handleShare}
       />
 
       {/* Foreground UI layer (DOM 3D Card and Text) */}
